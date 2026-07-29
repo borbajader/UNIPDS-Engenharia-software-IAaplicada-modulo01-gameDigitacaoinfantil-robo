@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
+  <title>Jogo de Digitação Infantil - Alfabetização</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.svg" />
+  <!-- Fontes para a interface lúdica do jogo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Playpen+Sans:wght@300..800&family=Short+Stack&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS via CDN para portabilidade perfeita no Docker e sem necessidade de compilação complexa -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            title: ['"Fredoka"', 'sans-serif'],
+            sans: ['"Playpen Sans"', 'sans-serif'],
+            cartoon: ['"Short Stack"', 'cursive'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Estilos customizados para animações, fontes e efeitos de profundidade lúdicos -->
+  <style>
+    body {
+      background-color: #f0fdf4; /* Verde bem clarinho de fundo, super calmo */
+      background-image: radial-gradient(#dcfce7 1.5px, transparent 1.5px), radial-gradient(#dcfce7 1.5px, #f0fdf4 1.5px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      user-select: none;
+    }
+
+    /* Efeito de ondas fofas na água do rio limite */
+    .river-wave {
+      background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+      border-radius: 40% 40% 0 0;
+      animation: wave 5s ease-in-out infinite alternate;
+    }
+
+    @keyframes wave {
+      0% { border-radius: 40% 35% 0 0; transform: translateY(0px); }
+      100% { border-radius: 35% 42% 0 0; transform: translateY(4px); }
+    }
+
+    /* Letras com profundidade e aspecto 3D lúdico */
+    .bubble-letter {
+      text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15), -1px -1px 0px rgba(255, 255, 255, 0.8);
+      animation: wiggle 1.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes wiggle {
+      0% { transform: scale(1) rotate(-3deg); }
+      100% { transform: scale(1.04) rotate(3deg); }
+    }
+
+    /* Teclado animado com efeitos de clique infantil */
+    .key-btn {
+      transition: all 0.1s ease;
+      box-shadow: 0 6px 0px var(--shadow-color, #1e3a8a);
+    }
+    .key-btn:active, .key-btn.pressed {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0px var(--shadow-color, #1e3a8a);
+    }
+
+    /* Partículas de estouro */
+    .confetti {
+      position: absolute;
+      pointer-events: none;
+      animation: burst 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    }
+
+    @keyframes burst {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+    }
+
+    /* Popups flutuantes de pontos */
+    .points-pop {
+      position: absolute;
+      pointer-events: none;
+      animation: floatUp 0.8s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+      20% { opacity: 1; }
+      100% { transform: translate(-50%, -60px) scale(1.2); opacity: 0; }
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col font-sans select-none text-slate-800">
+
+  <!-- ID PRINCIPAL DO JOGO PARA ACESSIBILIDADE E SELETOR -->
+  <main id="app-container" class="flex-1 flex flex-col h-full w-full max-w-5xl mx-auto p-4 md:p-6 justify-between gap-3">
+    
+    <!-- CABEÇALHO LÚDICO: TÍTULO, SELETOR DE ESTÁGIOS E MASCOTE -->
+    <header id="game-header" class="bg-white rounded-3xl p-4 shadow-xl border-4 border-emerald-400 flex flex-wrap items-center justify-between gap-4 z-40 bg-opacity-95">
+      <!-- Mascot + Title -->
+      <div class="flex items-center gap-3">
+        <!-- Mascote Dinâmico SVG -->
+        <div class="w-16 h-16 bg-amber-100 rounded-full border-4 border-amber-400 flex items-center justify-center shadow-md relative overflow-hidden" id="mascote-container">
+          <svg viewBox="0 0 100 100" class="w-full h-full p-1" id="mascote-svg">
+            <!-- Bochechas rosadas -->
+            <ellipse cx="25" cy="55" rx="10" ry="6" fill="#fca5a5" opacity="0.6"/>
+            <ellipse cx="75" cy="55" rx="10" ry="6" fill="#fca5a5" opacity="0.6"/>
+            <!-- Olhos dinâmicos -->
+            <g id="mascot-eyes">
+              <circle cx="35" cy="45" r="8" fill="#1e293b" id="left-eye"/>
+              <circle cx="65" cy="45" r="8" fill="#1e293b" id="right-eye"/>
+              <!-- Brilhos nos olhos -->
+              <circle cx="32" cy="42" r="3" fill="#ffffff"/>
+              <circle cx="62" cy="42" r="3" fill="#ffffff"/>
+            </g>
+            <!-- Sorriso dinâmico -->
+            <path d="M 35,58 Q 50,72 65,58" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round" id="mascot-mouth"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-title font-bold text-emerald-600 tracking-tight leading-none drop-shadow-sm">
+            Letrinhas Caindo!
+          </h1>
+          <p class="text-xs md:text-sm font-cartoon text-slate-500 mt-1">Super divertido digitação infantil ✨</p>
+        </div>
+      </div>
+
+      <!-- Seletor de Estágios (Vogais vs Todo Alfabeto) -->
+      <div class="flex bg-slate-100 p-1.5 rounded-2xl border-2 border-slate-300 gap-1 flex-wrap justify-center sm:flex-nowrap" id="stage-selector">
+        <button id="btn-estagio-1" onclick="definirEstagio(1)" class="px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all bg-emerald-400 text-white shadow-md border-b-4 border-emerald-600">
+          🅰️ Estágio 1 (Vogais)
+        </button>
+        <button id="btn-estagio-2" onclick="definirEstagio(2)" class="px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all text-slate-600 hover:text-emerald-600 bg-transparent">
+          🔢 Estágio 2 (Números 1-9)
+        </button>
+        <button id="btn-estagio-3" onclick="definirEstagio(3)" class="px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all text-slate-600 hover:text-emerald-600 bg-transparent">
+          🔠 Estágio 3 (A-Z)
+        </button>
+        <button id="btn-estagio-4" onclick="definirEstagio(4)" class="px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all text-slate-600 hover:text-emerald-600 bg-transparent">
+          🐼 Estágio 4 (Palavras)
+        </button>
+      </div>
+
+      <!-- Placar e Recorde -->
+      <div class="flex items-center gap-4 bg-amber-50 px-4 py-2 rounded-2xl border-2 border-amber-300">
+        <div class="text-center">
+          <div class="text-2xl font-title font-extrabold text-amber-600 leading-none" id="score-text">000</div>
+          <div class="text-[10px] font-bold text-amber-500 uppercase tracking-wide mt-0.5">Pontos</div>
+        </div>
+        <div class="w-px h-8 bg-amber-200"></div>
+        <div class="text-center">
+          <div class="text-lg font-title font-bold text-indigo-500 leading-none" id="high-score-text">0</div>
+          <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-wide mt-0.5">Melhor</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ÁREA DE QUEDA DO JOGO (PALCO PRINCIPAL DAS LETRAS) -->
+    <section id="game-stage" class="flex-1 bg-sky-100 rounded-3xl border-4 border-sky-400 relative overflow-hidden shadow-inner flex flex-col justify-end min-h-[300px]">
+      
+      <!-- Fundo decorado com nuvens fofinhas em SVG -->
+      <div class="absolute inset-0 pointer-events-none opacity-40 z-0">
+        <!-- Nuvem 1 -->
+        <svg class="absolute top-[10%] left-[8%] w-16 md:w-24 text-white fill-current" viewBox="0 0 100 100">
+          <path d="M 20,40 A 15,15 0 0,1 50,40 A 20,20 0 0,1 85,50 A 15,15 0 0,1 70,70 L 20,70 A 12,12 0 0,1 20,40" />
+        </svg>
+        <!-- Nuvem 2 -->
+        <svg class="absolute top-[25%] right-[12%] w-24 md:w-32 text-white fill-current" viewBox="0 0 100 100">
+          <path d="M 20,40 A 15,15 0 0,1 50,40 A 20,20 0 0,1 85,50 A 15,15 0 0,1 70,70 L 20,70 A 12,12 0 0,1 20,40" transform="scale(-1, 1) translate(-100, 0)"/>
+        </svg>
+        <!-- Nuvem 3 -->
+        <svg class="absolute top-[50%] left-[45%] w-12 md:w-20 text-white fill-current" viewBox="0 0 100 100">
+          <path d="M 20,40 A 15,15 0 0,1 50,40 A 20,20 0 0,1 85,50 A 15,15 0 0,1 70,70 L 20,70 A 12,12 0 0,1 20,40" />
+        </svg>
+      </div>
+
+      <!-- Container para as letras ativas -->
+      <div id="letters-container" class="absolute inset-0 z-10"></div>
+
+      <!-- Painel de Controles Flutuantes: Play, Pause, Robozinho IA, Tela Cheia e Som -->
+      <div class="absolute top-3 right-3 flex items-center gap-2 z-30">
+        <!-- Botão Robozinho IA -->
+        <button id="camera-btn" onclick="toggleRobo()" class="bg-white p-2.5 rounded-full border-2 border-purple-400 text-purple-600 shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center" title="Robozinho IA (Jogar Sozinho)">
+          <span id="camera-icon" class="text-xl">🤖</span>
+        </button>
+        <!-- Botão Tela Cheia -->
+        <button id="fullscreen-btn" onclick="toggleFullscreen()" class="bg-white p-2.5 rounded-full border-2 border-indigo-400 text-indigo-500 shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center" title="Tela Cheia">
+          <span id="fullscreen-icon" class="text-xl">📺</span>
+        </button>
+        <!-- Botão Iniciar / Parar (Play/Pause) -->
+        <button id="play-pause-btn" onclick="togglePlayPause()" class="bg-white p-2.5 rounded-full border-2 border-emerald-400 text-emerald-500 shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center" title="Parar/Iniciar">
+          <span id="play-pause-icon" class="text-xl">▶️</span>
+        </button>
+        <!-- Controle do Áudio -->
+        <button id="sound-btn" onclick="toggleAudio()" class="bg-white p-2.5 rounded-full border-2 border-amber-400 text-amber-500 shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center" title="Som">
+          <span id="sound-icon" class="text-xl">🔇</span>
+        </button>
+      </div>
+
+      <!-- Painel do Robozinho IA Jogando & Predição por Tensores (Lado Esquerdo da Tela) -->
+      <div id="robo-overlay" class="hidden absolute top-3 left-3 z-30 bg-white/95 backdrop-blur-md p-3 rounded-2xl border-2 border-purple-400 shadow-2xl flex flex-col gap-2 w-64 sm:w-72 max-h-[85%] overflow-hidden text-slate-800">
+        <div class="flex items-center justify-between border-b border-purple-100 pb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl bg-purple-500 text-white flex items-center justify-center text-xl shadow animate-bounce">
+              🤖
+            </div>
+            <div>
+              <h3 class="font-title font-extrabold text-sm text-purple-900 leading-tight">Robozinho IA</h3>
+              <p class="text-[10px] text-purple-600 font-bold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                Auto-Pilot Tensor Play
+              </p>
+            </div>
+          </div>
+          <button onclick="desativarRobo()" class="text-xs text-rose-500 hover:text-rose-700 font-bold bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 cursor-pointer">
+            ✕ Parar
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1.5 text-center">
+          <div class="bg-purple-50 p-1.5 rounded-xl border border-purple-200">
+            <span class="text-[10px] text-purple-600 font-bold block">🎯 Acertos Robô</span>
+            <span id="robo-hits-count" class="font-extrabold text-sm text-purple-900">0</span>
+          </div>
+          <div class="bg-emerald-50 p-1.5 rounded-xl border border-emerald-200">
+            <span class="text-[10px] text-emerald-600 font-bold block">⚡ Confiança Média</span>
+            <span id="robo-avg-score" class="font-extrabold text-sm text-emerald-800">96.5%</span>
+          </div>
+          <div class="bg-sky-50 p-1.5 rounded-xl border border-sky-200">
+            <span class="text-[10px] text-sky-600 font-bold block">⏱️ Latência Tensor</span>
+            <span id="robo-latency" class="font-extrabold text-xs text-sky-800">4.8 ms</span>
+          </div>
+          <div class="bg-amber-50 p-1.5 rounded-xl border border-amber-200">
+            <span class="text-[10px] text-amber-700 font-bold block">📍 BBox Alvo</span>
+            <span id="robo-bbox" class="font-extrabold text-[10px] text-amber-900 truncate block">[x:0, y:0]</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1 mt-1">
+          <div class="flex items-center justify-between text-[11px] font-extrabold text-slate-600 px-0.5">
+            <span>📊 Predições de Letras & Números</span>
+            <span class="text-[9px] text-purple-500 font-mono">TFJS YOLOv5</span>
+          </div>
+          <div id="robo-predictions-list" class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+            <div class="text-center text-[11px] text-slate-400 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              Aguardando alvos caindo na tela... 🎈
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overlay de Jogo Pausado / Introdução -->
+      <div id="start-overlay" class="absolute inset-0 bg-sky-200/90 flex flex-col items-center justify-center text-center p-6 z-30 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-2xl border-4 border-amber-400 max-w-sm transform scale-100 transition-transform">
+          <div id="overlay-emoji" class="text-6xl mb-4">🎈</div>
+          <h2 id="overlay-title" class="text-2xl md:text-3xl font-title font-bold text-amber-500">Pronto para Jogar?</h2>
+          <p id="overlay-text" class="text-sm text-slate-500 font-cartoon my-3 leading-relaxed">
+            As letrinhas vão cair do céu! Aperte as teclas no seu teclado ou toque nas letras coloridas aqui na tela para ganhar muitos pontos!
+          </p>
+          <button id="overlay-btn" onclick="comecarJogo()" class="w-full bg-amber-400 text-white font-title text-xl font-bold py-3 px-6 rounded-2xl shadow-lg border-b-6 border-amber-600 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer">
+            Começar Jogo! 🚀
+          </button>
+        </div>
+      </div>
+
+      <!-- LINHA LIMITE VISÍVEL: ÁGUA ONDULADA / FONTE DE ÁGUA LÚDICA -->
+      <div id="river-limit" class="w-full h-8 river-wave flex items-center justify-center border-t-2 border-sky-200 relative z-20 overflow-hidden">
+        <div class="absolute inset-0 flex items-center justify-center opacity-70">
+          <!-- Linha pontilhada estilosa marcando o limite para a criança entender -->
+          <div class="w-full border-t-4 border-dashed border-white/80 mx-2"></div>
+        </div>
+        <span class="text-xs font-title font-bold tracking-widest text-sky-100 uppercase drop-shadow z-30 select-none">
+          Ondinha Limite 💧
+        </span>
+      </div>
+
+    </section>
+
+    <!-- TECLADO VIRTUAL DE ALTA INTERATIVIDADE -->
+    <section id="virtual-keyboard-section" class="bg-white rounded-3xl p-4 shadow-xl border-4 border-emerald-400 z-30">
+      <div id="keyboard-container" class="flex flex-col gap-2 md:gap-3 w-full">
+        <!-- Gerado dinamicamente via JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- LÓGICA COMPLETA DO JOGO (HTML5, CSS3, JAVASCRIPT EM UM SÓ ARQUIVO) -->
+  <script>
+    // Configurações e estados básicos do jogo
+    let estagioAtual = 1; // 1 = Vogais, 2 = Completo (A-Z)
+    let pontuacao = 0;
+    let melhorPontuacao = parseInt(localStorage.getItem('typing_kids_high_score')) || 0;
+    let letrasAtivas = [];
+    let larguraPalco = 0;
+    let alturaPalco = 0;
+    let jogoAtivo = false;
+    let requestFrameId = null;
+    let delayGeracao = 3000; // Tempo inicial de geração da letra (milisegundos)
+    let ultimoTempoGerado = 0;
+    let audioAtivo = false;
+    let velocidadeLetraMultiplier = 1.0; // Fica um pouquinho mais rápido conforma pontua
+    
+    // Lista de vogais, números e alfabeto
+    const vogais = ['A', 'E', 'I', 'O', 'U'];
+    const numeros = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+    const palavrasEstagio4 = [
+      { palavra: 'GATO', emoji: '🐈', som: 'gato' },
+      { palavra: 'CÃO', emoji: '🐕', som: 'cão' },
+      { palavra: 'SAPO', emoji: '🐸', som: 'sapo' },
+      { palavra: 'VACA', emoji: '🐄', som: 'vaca' },
+      { palavra: 'LEÃO', emoji: '🦁', som: 'leão' },
+      { palavra: 'RATO', emoji: '🐀', som: 'rato' },
+      { palavra: 'PEIXE', emoji: '🐟', som: 'peixe' },
+      { palavra: 'PATO', emoji: '🦆', som: 'pato' },
+      { palavra: 'SOL', emoji: '☀️', som: 'sol' },
+      { palavra: 'CASA', emoji: '🏠', som: 'casa' },
+      { palavra: 'BOLA', emoji: '⚽', som: 'bola' },
+      { palavra: 'UVA', emoji: '🍇', som: 'uva' },
+      { palavra: 'MAÇÃ', emoji: '🍎', som: 'maçã' },
+      { palavra: 'BOLO', emoji: '🍰', som: 'bolo' },
+    ];
+
+    // Cores bem divertidas e contrastantes para cada letra (Arco-íris)
+    const coresLetras = {
+      'A': { bg: 'bg-rose-400', border: 'border-rose-600', text: 'text-rose-900', shadow: '#e11d48' },
+      'E': { bg: 'bg-amber-400', border: 'border-amber-600', text: 'text-amber-900', shadow: '#d97706' },
+      'I': { bg: 'bg-emerald-400', border: 'border-emerald-600', text: 'text-emerald-900', shadow: '#059669' },
+      'O': { bg: 'bg-sky-400', border: 'border-sky-600', text: 'text-sky-900', shadow: '#0284c7' },
+      'U': { bg: 'bg-indigo-400', border: 'border-indigo-600', text: 'text-indigo-900', shadow: '#4f46e5' },
+      '1': { bg: 'bg-rose-400', border: 'border-rose-600', text: 'text-rose-900', shadow: '#e11d48' },
+      '2': { bg: 'bg-orange-400', border: 'border-orange-600', text: 'text-orange-900', shadow: '#ea580c' },
+      '3': { bg: 'bg-amber-400', border: 'border-amber-600', text: 'text-amber-900', shadow: '#d97706' },
+      '4': { bg: 'bg-emerald-400', border: 'border-emerald-600', text: 'text-emerald-900', shadow: '#059669' },
+      '5': { bg: 'bg-teal-400', border: 'border-teal-600', text: 'text-teal-900', shadow: '#0d9488' },
+      '6': { bg: 'bg-sky-400', border: 'border-sky-600', text: 'text-sky-900', shadow: '#0284c7' },
+      '7': { bg: 'bg-indigo-400', border: 'border-indigo-600', text: 'text-indigo-900', shadow: '#4f46e5' },
+      '8': { bg: 'bg-purple-400', border: 'border-purple-600', text: 'text-purple-900', shadow: '#7c3aed' },
+      '9': { bg: 'bg-pink-400', border: 'border-pink-600', text: 'text-pink-900', shadow: '#db2777' },
+      // Outras letras para usar cores sortidas no estágio 2
+      'default': [
+        { bg: 'bg-pink-400', border: 'border- pink-600', text: 'text-pink-900', shadow: '#db2777' },
+        { bg: 'bg-purple-400', border: 'border-purple-600', text: 'text-purple-900', shadow: '#7c3aed' },
+        { bg: 'bg-orange-400', border: 'border-orange-600', text: 'text-orange-900', shadow: '#ea580c' },
+        { bg: 'bg-lime-400', border: 'border-lime-600', text: 'text-lime-900', shadow: '#65a30d' },
+        { bg: 'bg-teal-400', border: 'border-teal-600', text: 'text-teal-900', shadow: '#0d9488' },
+        { bg: 'bg-fuchsia-400', border: 'border-fuchsia-600', text: 'text-fuchsia-900', shadow: '#c026d3' }
+      ]
+    };
+
+    // Inicialização da Web Audio API
+    let audioCtx = null;
+    function iniciarAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    // Gerador de Notas Alegres com Synth Simples
+    function tocarSom(tipo) {
+      if (!audioAtivo) return;
+      iniciarAudio();
+
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (tipo === 'acerto') {
+          // Nota 1 super alegre
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+          osc.frequency.exponentialRampToValueAtTime(880.00, audioCtx.currentTime + 0.15); // A5
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.2);
+        } else if (tipo === 'erro') {
+          // Som de Ploc / erro mais grave
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220.00, audioCtx.currentTime); // A3
+          osc.frequency.linearRampToValueAtTime(110.00, audioCtx.currentTime + 0.25); // A2
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.3);
+        } else if (tipo === 'recorde') {
+          // Fanfarra triunfante curta!
+          const notas = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+          notas.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.type = 'sine';
+            o.frequency.setValueAtTime(freq, audioCtx.currentTime + (idx * 0.1));
+            g.gain.setValueAtTime(0.1, audioCtx.currentTime + (idx * 0.1));
+            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (idx * 0.1) + 0.25);
+            o.start(audioCtx.currentTime + (idx * 0.1));
+            o.stop(audioCtx.currentTime + (idx * 0.1) + 0.25);
+          });
+        }
+      } catch (e) {
+        console.warn('Erro ao reproduzir áudio:', e);
+      }
+    }
+
+    // Liga/Desliga Áudio
+    function toggleAudio() {
+      audioAtivo = !audioAtivo;
+      const btn = document.getElementById('sound-icon');
+      if (audioAtivo) {
+        btn.textContent = '🔊';
+        iniciarAudio();
+        tocarSom('acerto');
+      } else {
+        btn.textContent = '🔇';
+      }
+    }
+
+    // Inicializador do Jogo
+    window.onload = () => {
+      // Registrar recorde do LocalStorage
+      document.getElementById('high-score-text').textContent = melhorPontuacao;
+      
+      // Adaptar tamanho do palco
+      atualizarDimensoes();
+      window.addEventListener('resize', atualizarDimensoes);
+
+      // Ouvir teclas físicas de digitação do teclado
+      window.addEventListener('keydown', lidarComTecladoFisico);
+
+      // Renderizar o teclado virtual inicial
+      renderizarTecladoVirtual();
+    };
+
+    function atualizarDimensoes() {
+      const stage = document.getElementById('game-stage');
+      if (stage) {
+        larguraPalco = stage.clientWidth || window.innerWidth;
+        const height = stage.clientHeight;
+        // Fallback seguro caso seja medido prematuramente ou em iframe apertado
+        alturaPalco = height > 100 ? (height - 32) : 480;
+      } else {
+        larguraPalco = window.innerWidth;
+        alturaPalco = 480;
+      }
+    }
+
+    // Função universal de fala (TTS) para incentivar a verbalização infantil das letras
+    function falarLetra(letra) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Parar fala anterior
+
+        let texto = letra.toLowerCase();
+        // Ajustar som para letra "o" soar como "ó" (perfeito para alfabetização de crianças brasileiras)
+        if (texto === 'o') {
+          texto = 'ó';
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(texto);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.6; // Velocidade bem devagar, pausada e nítida para crianças
+        utterance.pitch = 1.25; // Voz um tiquinho mais infantil/divertida
+
+        // Tentar buscar e fixar uma das vozes nativas em português
+        const vozes = window.speechSynthesis.getVoices();
+        const vozPt = vozes.find(v => v.lang.startsWith('pt-BR') || v.lang.startsWith('pt_BR'));
+        if (vozPt) {
+          utterance.voice = vozPt;
+        }
+
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Função para falar a palavra inteira com entonação infantil fofinha ao clicar no ícone
+    function falarPalavra(palavra) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Parar fala anterior
+
+        let texto = palavra.toLowerCase();
+        
+        const utterance = new SpeechSynthesisUtterance(texto);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.6; // Velocidade bem devagar e pausada para fala de palavras
+        utterance.pitch = 1.35; // Voz um tiquinho mais infantil/divertida
+
+        const vozes = window.speechSynthesis.getVoices();
+        const vozPt = vozes.find(v => v.lang.startsWith('pt-BR') || v.lang.startsWith('pt_BR'));
+        if (vozPt) {
+          utterance.voice = vozPt;
+        }
+
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Criar o Teclado Virtual correspondente ao Estágio
+    function renderizarTecladoVirtual() {
+      const container = document.getElementById('keyboard-container');
+      container.innerHTML = ''; // Limpar anterior
+
+      if (estagioAtual === 1) {
+        // Estágio 1 do Jogo: Exibir apenas as Vogais organizadas centralizadas e ENORMES
+        const row = document.createElement('div');
+        row.className = 'flex justify-center gap-4 py-2 w-full';
+
+        vogais.forEach(letra => {
+          const btn = criarBotaoTeclado(letra, true);
+          row.appendChild(btn);
+        });
+
+        container.appendChild(row);
+      } else if (estagioAtual === 2) {
+        // Estágio 2 do Jogo: Números 1 a 9
+        const row = document.createElement('div');
+        row.className = 'flex justify-center gap-2 sm:gap-3 py-2 w-full flex-wrap';
+
+        numeros.forEach(num => {
+          const btn = criarBotaoTeclado(num, true);
+          row.appendChild(btn);
+        });
+
+        container.appendChild(row);
+      } else if (estagioAtual === 3) {
+        // Estágio 3 do Jogo: Padrão QWERTY Completo para treinamento real das mãos
+        const linhasQWERTY = [
+          ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+          ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+          ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+        ];
+
+        linhasQWERTY.forEach(linha => {
+          const row = document.createElement('div');
+          row.className = 'flex justify-center gap-1.5 md:gap-2.5 w-full';
+
+          linha.forEach(letra => {
+            const btn = criarBotaoTeclado(letra, false);
+            row.appendChild(btn);
+          });
+
+          container.appendChild(row);
+        });
+      } else {
+        // Estágio 4 do Jogo: Grades super divertidas de animais e objetos com desenho/emoji
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2.5 w-full p-2 max-h-[220px] overflow-y-auto';
+
+        palavrasEstagio4.forEach(item => {
+          const btn = document.createElement('button');
+          btn.id = `key-word-${item.palavra}`;
+          
+          // Cores chamativas
+          btn.className = 'flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-b-6 bg-white border-amber-400 text-amber-950 font-title hover:scale-105 active:translate-y-1 transition-all cursor-pointer select-none min-h-[75px] shadow-sm';
+          btn.style.setProperty('--shadow-color', '#d97706'); // Sombra gordinha
+
+          btn.innerHTML = `
+            <span class="text-3xl sm:text-4xl active:scale-110 transition-transform">${item.emoji}</span>
+            <span class="text-[10px] sm:text-xs font-extrabold uppercase tracking-wide mt-1 text-slate-700">${item.palavra}</span>
+          `;
+
+          // Ao clicar, faz a voz infantil pronunciar o bicho/objeto e estoura se estiver caindo
+          btn.addEventListener('mousedown', () => {
+            falarPalavra(item.palavra);
+            lidarComPalavraEstourada(item.palavra);
+          });
+
+          grid.appendChild(btn);
+        });
+
+        container.appendChild(grid);
+      }
+    }
+
+    // Auxiliar para gerar o visual de cada botão de tecla virtual
+    function criarBotaoTeclado(letra, isGrande) {
+      const btn = document.createElement('button');
+      btn.id = `key-${letra}`;
+      btn.textContent = letra;
+
+      // Pegar cor específica ou sortear para o teclado colorido
+      let configCor = coresLetras[letra];
+      if (!configCor) {
+        const hash = letra.charCodeAt(0) % coresLetras.default.length;
+        configCor = coresLetras.default[hash];
+      }
+
+      const tamanhoClasses = isGrande 
+        ? 'w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-2xl sm:text-3xl md:text-5xl font-title rounded-2xl' 
+        : 'w-8 h-10 sm:w-10 sm:h-12 md:w-12 md:h-14 text-lg sm:text-xl md:text-2xl font-title rounded-xl';
+
+      btn.className = `${tamanhoClasses} key-btn uppercase text-slate-900 border-2 border-b-6 flex items-center justify-center cursor-pointer select-none font-bold active:scale-95 transition-all ${configCor.bg} ${configCor.border} ${configCor.text}`;
+      btn.style.setProperty('--shadow-color', configCor.shadow);
+
+      // Ouvinte de cliques virtuais pela garotada!
+      btn.addEventListener('mousedown', () => {
+        falarLetra(letra);
+        lidarComDigitacao(letra);
+      });
+
+      return btn;
+    }
+
+    // Alternar o nível do Jogo com muito cuidado e mudando o visual ativo
+    function definirEstagio(num) {
+      if (estagioAtual === num) return;
+      estagioAtual = num;
+
+      // Feedback áudio
+      tocarSom('acerto');
+
+      // Alterar estilo dos seletores superiores
+      const btn1 = document.getElementById('btn-estagio-1');
+      const btn2 = document.getElementById('btn-estagio-2');
+      const btn3 = document.getElementById('btn-estagio-3');
+      const btn4 = document.getElementById('btn-estagio-4');
+
+      [btn1, btn2, btn3, btn4].forEach(b => {
+        if (b) b.className = "px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all text-slate-600 hover:text-emerald-600 bg-transparent";
+      });
+
+      if (num === 1 && btn1) {
+        btn1.className = "px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all bg-emerald-400 text-white shadow-md border-b-4 border-emerald-600";
+      } else if (num === 2 && btn2) {
+        btn2.className = "px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all bg-emerald-400 text-white shadow-md border-b-4 border-emerald-600";
+      } else if (num === 3 && btn3) {
+        btn3.className = "px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all bg-emerald-400 text-white shadow-md border-b-4 border-emerald-600";
+      } else if (num === 4 && btn4) {
+        btn4.className = "px-3 py-2 md:px-4 md:py-2 rounded-xl font-title font-bold text-xs md:text-sm cursor-pointer transform active:scale-95 transition-all bg-emerald-400 text-white shadow-md border-b-4 border-emerald-600";
+      }
+
+      // Limpar as letras caídas atuais do palco para começar do zero no novo estágio!
+      limparTodasLetrasDoPalco();
+
+      // Recriar teclado virtual
+      renderizarTecladoVirtual();
+
+      // Ajustes de tempo de spawn
+      delayGeracao = num === 1 ? 3000 : num === 2 ? 2800 : num === 3 ? 2300 : 3200;
+    }
+
+    function togglePlayPause() {
+      // Se ainda não começou nada, mas clicou no play-pause, começa o jogo
+      const overlayVisible = !document.getElementById('start-overlay').classList.contains('hidden');
+      if (jogoAtivo) {
+        // Pausar
+        jogoAtivo = false;
+        document.getElementById('play-pause-icon').textContent = '▶️';
+        
+        // Exibir overlay de pausado com visual amigável
+        document.getElementById('overlay-emoji').textContent = '⏸️';
+        document.getElementById('overlay-title').textContent = 'Jogo Pausado!';
+        document.getElementById('overlay-text').textContent = 'Brincadeira em pausa! Clique no botão abaixo para continuar jogando e estourar mais letrinhas!';
+        document.getElementById('overlay-btn').textContent = 'Continuar Jogando! 🚀';
+        
+        document.getElementById('start-overlay').classList.remove('hidden');
+        document.getElementById('start-overlay').classList.remove('opacity-0');
+      } else {
+        // Resumir / Iniciar
+        comecarJogo();
+      }
+    }
+
+    function toggleFullscreen() {
+      const doc = window.document;
+      const docEl = doc.documentElement;
+
+      const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+      const cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+      try {
+        if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+          if (requestFullScreen) {
+            requestFullScreen.call(docEl);
+            document.getElementById('fullscreen-icon').textContent = '⏹️';
+          }
+        } else {
+          if (cancelFullScreen) {
+            cancelFullScreen.call(doc);
+            document.getElementById('fullscreen-icon').textContent = '📺';
+          }
+        }
+      } catch (e) {
+        console.warn("Navegador impediu ou não suporta API Fullscreen:", e);
+      }
+    }
+
+    function comecarJogo() {
+      // Iniciar contexto de áudio se for no primeiro toque ativo
+      iniciarAudio();
+
+      document.getElementById('start-overlay').classList.add('opacity-0');
+      setTimeout(() => {
+        document.getElementById('start-overlay').classList.add('hidden');
+      }, 300);
+
+      jogoAtivo = true;
+      ultimoTempoGerado = performance.now();
+      
+      // Mudar ícone do botão de pausa para indicar que está jogando
+      document.getElementById('play-pause-icon').textContent = '⏸️';
+
+      // Animar mascote para estado padrão
+      mudarHumorMascote('padrao');
+
+      // Loop do jogo por Frame Rate d'água
+      if (requestFrameId) cancelAnimationFrame(requestFrameId);
+      requestFrameId = requestAnimationFrame(loopDoJogo);
+    }
+
+    function limparTodasLetrasDoPalco() {
+      letrasAtivas.forEach(letraObj => {
+        if (letraObj.domElement) letraObj.domElement.remove();
+      });
+      letrasAtivas = [];
+    }
+
+    // Loop Frame Rate do Jogo (Geração e Movimentação Física das letras)
+    function loopDoJogo(timestamp) {
+      if (!jogoAtivo) return;
+
+      // 1. Verificar se é hora de gerar uma nova Letrinha
+      if (timestamp - ultimoTempoGerado > delayGeracao) {
+        gerarLetraCaindo();
+        ultimoTempoGerado = timestamp;
+      }
+
+      // 2. Mover letras ativas e detectar colisão com o Limite d'Água (Ondinha)
+      for (let i = letrasAtivas.length - 1; i >= 0; i--) {
+        const letraObj = letrasAtivas[i];
+        
+        letraObj.y += letraObj.velocidade * velocidadeLetraMultiplier;
+        letraObj.domElement.style.top = `${letraObj.y}px`;
+
+        // Se passar da Linha Limite d'Água (alturaPalco)
+        if (letraObj.y >= alturaPalco) {
+          // Toque na água! Estourar e remover
+          fazerSalpicoDeAgua(letraObj.x, alturaPalco, letraObj.letra);
+          tocarSom('erro');
+          mudarHumorMascote('erro');
+
+          // Descontar levemente 5 pontos (Mas sem deixar a criança frustrada abaixo de zero)
+          pontuacao = Math.max(0, pontuacao - 5);
+          document.getElementById('score-text').textContent = formatarPontuacao(pontuacao);
+
+          // Remover elemento
+          letraObj.domElement.remove();
+          letrasAtivas.splice(i, 1);
+        } else {
+          // Se a letra estiver chegando muito pertinho (a 60px da água), mascote fica aflito/concentrado!
+          if (alturaPalco - letraObj.y < 70) {
+            mudarHumorMascote('alerta');
+          }
+        }
+      }
+
+      requestFrameId = requestAnimationFrame(loopDoJogo);
+    }
+
+    // Criação de uma bolha/balão de Letra ou Palavra no topo
+    function gerarLetraCaindo() {
+      // Escolhe letra ou palavra baseada no estágio
+      let caractere = '';
+      let textoDisplay = '';
+      let configCor;
+
+      if (estagioAtual === 1) {
+        caractere = vogais[Math.floor(Math.random() * vogais.length)];
+        textoDisplay = caractere;
+        configCor = coresLetras[caractere];
+      } else if (estagioAtual === 2) {
+        caractere = numeros[Math.floor(Math.random() * numeros.length)];
+        textoDisplay = caractere;
+        configCor = coresLetras[caractere];
+      } else if (estagioAtual === 3) {
+        caractere = alfabeto[Math.floor(Math.random() * alfabeto.length)];
+        textoDisplay = caractere;
+        configCor = coresLetras[caractere];
+      } else {
+        const item = palavrasEstagio4[Math.floor(Math.random() * palavrasEstagio4.length)];
+        caractere = item.palavra;
+        textoDisplay = `${item.emoji} ${item.palavra}`;
+        const hash = caractere.charCodeAt(0) % coresLetras.default.length;
+        configCor = coresLetras.default[hash];
+      }
+
+      if (!configCor) {
+        const hash = caractere.charCodeAt(0) % coresLetras.default.length;
+        configCor = coresLetras.default[hash];
+      }
+
+      // Determinar propriedades visuais divertidas
+      const idUnico = 'letra-' + Date.now() + '-' + Math.floor(Math.random() * 100);
+      const xPercent = 8 + Math.random() * 80; // Margem segura
+      const baseTamanho = window.innerWidth < 640 ? 54 : 68; // responsivo
+
+      // Criar no Container de modo flutuante
+      const dom = document.createElement('div');
+      dom.id = idUnico;
+      dom.textContent = textoDisplay;
+      
+      if (estagioAtual === 4) {
+        // Estilo pílula / cápsula gordinha para as palavras
+        dom.className = `absolute select-none flex items-center justify-center font-bold tracking-tight rounded-full border-4 shadow-lg bubble-letter px-4 gap-1 ${configCor.bg} ${configCor.border} ${configCor.text}`;
+        dom.style.height = `${baseTamanho}px`;
+        dom.style.minWidth = `${baseTamanho * 1.8}px`;
+        dom.style.fontSize = `${baseTamanho * 0.35}px`;
+      } else {
+        dom.className = `absolute select-none flex items-center justify-center font-bold tracking-tight rounded-full border-4 shadow-lg bubble-letter ${configCor.bg} ${configCor.border} ${configCor.text}`;
+        dom.style.width = `${baseTamanho}px`;
+        dom.style.height = `${baseTamanho}px`;
+        dom.style.fontSize = `${baseTamanho * 0.58}px`;
+      }
+
+      if (roboAtivo) {
+        dom.classList.add('pointer-events-auto', 'cursor-pointer');
+        dom.classList.remove('pointer-events-none');
+      } else {
+        dom.classList.add('pointer-events-none');
+        dom.classList.remove('pointer-events-auto', 'cursor-pointer');
+      }
+
+      dom.onclick = function() {
+        if (roboAtivo) {
+          falarLetra(caractere);
+          lidarComDigitacaoTarget(idUnico, caractere);
+        }
+      };
+
+      dom.style.fontFamily = '"Fredoka", sans-serif';
+      dom.style.left = `calc(${xPercent}% - ${baseTamanho / 2}px)`;
+      dom.style.top = `-70px`; // Começar fora do topo
+
+      document.getElementById('letters-container').appendChild(dom);
+
+      // Velocidade bem suave e amigáve para dar tempo da criança ler e achar a tecla!
+      const baseVel = window.innerWidth < 640 ? 0.45 : 0.65;
+      const velAjustada = baseVel + (Math.random() * 0.15);
+
+      letrasAtivas.push({
+        id: idUnico,
+        letra: caractere,
+        x: (xPercent / 100) * larguraPalco,
+        y: -70,
+        velocidade: velAjustada,
+        domElement: dom
+      });
+    }
+
+    // Tratamento ao Pressionar Teclado Físico
+    function lidarComTecladoFisico(evento) {
+      if (!jogoAtivo) return;
+      const letraDigitada = evento.key.toUpperCase();
+
+      // Impedir ações padrões de navegação
+      if (letraDigitada === ' ' || (evento.keyCode >= 65 && evento.keyCode <= 90) || (evento.keyCode >= 48 && evento.keyCode <= 57) || (evento.keyCode >= 96 && evento.keyCode <= 105)) {
+        evento.preventDefault();
+      }
+
+      if (estagioAtual === 1) {
+        if (vogais.includes(letraDigitada)) {
+          piscarTeclaVirtual(letraDigitada);
+          falarLetra(letraDigitada);
+          lidarComDigitacao(letraDigitada);
+        }
+      } else if (estagioAtual === 2) {
+        if (numeros.includes(letraDigitada)) {
+          piscarTeclaVirtual(letraDigitada);
+          falarLetra(letraDigitada);
+          lidarComDigitacao(letraDigitada);
+        }
+      } else if (estagioAtual === 3) {
+        if (alfabeto.includes(letraDigitada)) {
+          piscarTeclaVirtual(letraDigitada);
+          falarLetra(letraDigitada);
+          lidarComDigitacao(letraDigitada);
+        }
+      } else if (estagioAtual === 4) {
+        if (alfabeto.includes(letraDigitada)) {
+          piscarTeclaVirtual(letraDigitada);
+          const itemMatch = palavrasEstagio4.find(p => p.palavra.startsWith(letraDigitada));
+          if (itemMatch) {
+            falarPalavra(itemMatch.palavra);
+            lidarComPalavraEstourada(itemMatch.palavra);
+          }
+        }
+      }
+    }
+
+    // Estourar a palavra no estágio 3 ao clicar no botão de desenho correspondente
+    function lidarComPalavraEstourada(palavra) {
+      if (!jogoAtivo) return;
+
+      let encontradaIdx = -1;
+      let menorDistanciaYParaAgua = -9999;
+
+      // Encontrar a palavra correta ativa mais abaixo da tela
+      for (let i = 0; i < letrasAtivas.length; i++) {
+        if (letrasAtivas[i].letra === palavra) {
+          if (letrasAtivas[i].y > menorDistanciaYParaAgua) {
+            menorDistanciaYParaAgua = letrasAtivas[i].y;
+            encontradaIdx = i;
+          }
+        }
+      }
+
+      if (encontradaIdx !== -1) {
+        const letraMatch = letrasAtivas[encontradaIdx];
+
+        // Efeitos de partículas/Estouro e popup de pontuação
+        criarEfeitoEstouro(letraMatch.domElement.offsetLeft + (letraMatch.domElement.clientWidth / 2), letraMatch.domElement.offsetTop + (letraMatch.domElement.clientHeight / 2));
+        criarPopupPontos(letraMatch.domElement.offsetLeft + (letraMatch.domElement.clientWidth / 2), letraMatch.domElement.offsetTop, '+10');
+
+        tocarSom('acerto');
+        mudarHumorMascote('acerto');
+
+        // Adicionar pontuação
+        pontuacao += 10;
+        document.getElementById('score-text').textContent = formatarPontuacao(pontuacao);
+
+        velocidadeLetraMultiplier = 1.0 + Math.floor(pontuacao / 300) * 0.04;
+
+        // Verificar e registrar Novo Recorde
+        if (pontuacao > melhorPontuacao) {
+          melhorPontuacao = pontuacao;
+          localStorage.setItem('typing_kids_high_score', melhorPontuacao);
+          document.getElementById('high-score-text').textContent = melhorPontuacao;
+          
+          if (pontuacao === melhorPontuacao && pontuacao % 50 === 0) {
+            tocarSom('recorde');
+          }
+        }
+
+        // Remover objeto e elemento DOM
+        letraMatch.domElement.remove();
+        letrasAtivas.splice(encontradaIdx, 1);
+      } else {
+        // Se a palavra não está na tela, muda o humor para padrão alegre fofinho
+        mudarHumorMascote('alerta');
+      }
+    }
+
+    // Piscar a tecla visual quando a física correspondente do notebook for usada
+    function piscarTeclaVirtual(letra) {
+      const btn = document.getElementById(`key-${letra}`);
+      if (btn) {
+        btn.classList.add('pressed');
+        setTimeout(() => {
+          btn.classList.remove('pressed');
+        }, 120);
+      }
+    }
+
+    // Ação Real do Clique/Digitação certeira da criança
+    function lidarComDigitacao(letra) {
+      if (!jogoAtivo) return;
+
+      // Encontrar a letra correta ativa que esteja mais abaixo da tela (mais próxima do limite)
+      let letraEncontradaIdx = -1;
+      let menorDistanciaYParaAgua = -9999;
+
+      for (let i = 0; i < letrasAtivas.length; i++) {
+        if (letrasAtivas[i].letra === letra) {
+          // A letra mais abaixo terá o maior valor de Y
+          if (letrasAtivas[i].y > menorDistanciaYParaAgua) {
+            menorDistanciaYParaAgua = letrasAtivas[i].y;
+            letraEncontradaIdx = i;
+          }
+        }
+      }
+
+      if (letraEncontradaIdx !== -1) {
+        // Parabéns! Acerto genial!
+        const letraMatch = letrasAtivas[letraEncontradaIdx];
+        
+        // Efeitos de partículas/Estouro e popup de pontuação
+        criarEfeitoEstouro(letraMatch.domElement.offsetLeft + (letraMatch.domElement.clientWidth / 2), letraMatch.domElement.offsetTop + (letraMatch.domElement.clientHeight / 2));
+        criarPopupPontos(letraMatch.domElement.offsetLeft + (letraMatch.domElement.clientWidth / 2), letraMatch.domElement.offsetTop, '+10');
+
+        tocarSom('acerto');
+        mudarHumorMascote('acerto');
+
+        // Adicionar pontuação
+        pontuacao += 10;
+        document.getElementById('score-text').textContent = formatarPontuacao(pontuacao);
+
+        // Aumentar de forma extremamente suave para não sobrecarregar as crianças
+        velocidadeLetraMultiplier = 1.0 + Math.floor(pontuacao / 300) * 0.04;
+
+        // Verificar e registrar Novo Recorde
+        if (pontuacao > melhorPontuacao) {
+          melhorPontuacao = pontuacao;
+          localStorage.setItem('typing_kids_high_score', melhorPontuacao);
+          document.getElementById('high-score-text').textContent = melhorPontuacao;
+          
+          // Se for uma quebra de recorde de milésimos exata, toca som triunfal
+          if (pontuacao === melhorPontuacao && pontuacao % 50 === 0) {
+            tocarSom('recorde');
+          }
+        }
+
+        // Remover objeto e elemento DOM
+        letraMatch.domElement.remove();
+        letrasAtivas.splice(letraEncontradaIdx, 1);
+      } else {
+        // Se bater uma tecla errada que não possui letras ativas na tela, mascote reage fofo
+        mudarHumorMascote('alerta');
+      }
+    }
+
+    // Derrubada de item especifico por ID quando no modo Robô
+    function lidarComDigitacaoTarget(targetId, letra) {
+      if (!jogoAtivo) return;
+
+      let idx = letrasAtivas.findIndex(l => l.id === targetId);
+      if (idx === -1) {
+        let maxY = -9999;
+        for (let i = 0; i < letrasAtivas.length; i++) {
+          if (letrasAtivas[i].letra === letra && letrasAtivas[i].y > maxY) {
+            maxY = letrasAtivas[i].y;
+            idx = i;
+          }
+        }
+      }
+
+      if (idx !== -1) {
+        const letraMatch = letrasAtivas[idx];
+        criarEfeitoEstouro(letraMatch.domElement.offsetLeft + (letraMatch.domElement.clientWidth / 2), letraMatch.domElement.offsetTop + (letraMatch.domElement.clientHeight / 2));
+        criarPopupPontos(letraMatch.domElement.offsetLeft + (letraMatch.domElement.clientWidth / 2), letraMatch.domElement.offsetTop, '+10 🤖');
+
+        tocarSom('acerto');
+        mudarHumorMascote('acerto');
+
+        pontuacao += 10;
+        document.getElementById('score-text').textContent = formatarPontuacao(pontuacao);
+
+        if (pontuacao > melhorPontuacao) {
+          melhorPontuacao = pontuacao;
+          localStorage.setItem('typing_kids_high_score', melhorPontuacao);
+          document.getElementById('high-score-text').textContent = melhorPontuacao;
+        }
+
+        letraMatch.domElement.remove();
+        letrasAtivas.splice(idx, 1);
+      }
+    }
+
+    // Automação do Robozinho IA com Web Worker TensorFlow.js
+    let roboAtivo = false;
+    let yoloWorker = null;
+    let roboInterval = null;
+    let roboAcertos = 0;
+    let roboSomaConfianca = 0;
+    let roboPredicoesHistorico = [];
+
+    function toggleRobo() {
+      if (roboAtivo) {
+        desativarRobo();
+      } else {
+        ativarRobo();
+      }
+    }
+
+    function desativarRobo() {
+      roboAtivo = false;
+      const overlay = document.getElementById('robo-overlay');
+      if (overlay) overlay.classList.add('hidden');
+      const icon = document.getElementById('camera-icon');
+      if (icon) icon.textContent = '🤖';
+      const btn = document.getElementById('camera-btn');
+      if (btn) btn.className = "bg-white p-2.5 rounded-full border-2 border-purple-400 text-purple-600 shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center";
+
+      // Desabilitar clique direto nas bolhas caindo (obriga usar teclado inferior)
+      const container = document.getElementById('letters-container');
+      if (container) {
+        Array.from(container.children).forEach(el => {
+          el.classList.add('pointer-events-none');
+          el.classList.remove('pointer-events-auto', 'cursor-pointer');
+        });
+      }
+
+      if (roboInterval) {
+        clearInterval(roboInterval);
+        roboInterval = null;
+      }
+      if (yoloWorker) {
+        yoloWorker.terminate();
+        yoloWorker = null;
+      }
+    }
+
+    function ativarRobo() {
+      try {
+        roboAtivo = true;
+        const overlay = document.getElementById('robo-overlay');
+        if (overlay) overlay.classList.remove('hidden');
+        const icon = document.getElementById('camera-icon');
+        if (icon) icon.textContent = '🤖';
+        const btn = document.getElementById('camera-btn');
+        if (btn) btn.className = "bg-purple-600 text-white p-2.5 rounded-full border-2 border-purple-700 shadow-md hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center animate-bounce";
+
+        // Habilitar clique direto nas bolhas caindo apenas durante o modo Robô
+        const container = document.getElementById('letters-container');
+        if (container) {
+          Array.from(container.children).forEach(el => {
+            el.classList.add('pointer-events-auto', 'cursor-pointer');
+            el.classList.remove('pointer-events-none');
+          });
+        }
+
+        yoloWorker = new Worker('/yolo-worker.js');
+        yoloWorker.onmessage = (e) => {
+          const data = e.data;
+          if (data.type === 'robot-action' && data.targetChar) {
+            const char = String(data.targetChar).toUpperCase();
+            const targetId = data.targetId;
+
+            falarLetra(char);
+            piscarTeclaVirtual(char);
+            lidarComDigitacaoTarget(targetId, char);
+
+            roboAcertos++;
+            const confVal = parseFloat(data.score || '95.0');
+            roboSomaConfianca += confVal;
+            const avgScore = (roboSomaConfianca / roboAcertos).toFixed(1);
+
+            const hitsEl = document.getElementById('robo-hits-count');
+            if (hitsEl) hitsEl.textContent = roboAcertos.toString();
+
+            const avgEl = document.getElementById('robo-avg-score');
+            if (avgEl) avgEl.textContent = `${avgScore}%`;
+
+            const latEl = document.getElementById('robo-latency');
+            if (latEl) latEl.textContent = `${data.tensorTimeMs} ms`;
+
+            const bboxEl = document.getElementById('robo-bbox');
+            if (bboxEl) bboxEl.textContent = `[x:${Math.round(data.x)}px, y:${Math.round(data.y)}px]`;
+
+            // Adicionar ao histórico de lista
+            roboPredicoesHistorico.unshift({
+              char,
+              score: data.score,
+              x: Math.round(data.x),
+              y: Math.round(data.y),
+              ms: data.tensorTimeMs
+            });
+            roboPredicoesHistorico = roboPredicoesHistorico.slice(0, 6);
+
+            const listEl = document.getElementById('robo-predictions-list');
+            if (listEl) {
+              listEl.innerHTML = roboPredicoesHistorico.map(p => `
+                <div class="bg-slate-50 p-2 rounded-xl border border-slate-200 flex flex-col gap-1 shadow-sm text-xs">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                      <span class="w-6 h-6 rounded-lg bg-purple-500 text-white font-title font-extrabold flex items-center justify-center text-xs shadow-sm">${p.char}</span>
+                      <span class="font-bold text-slate-700">Letra ${p.char}</span>
+                    </div>
+                    <span class="font-mono font-extrabold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">${p.score}%</span>
+                  </div>
+                  <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-emerald-400 h-full rounded-full" style="width: ${p.score}%"></div>
+                  </div>
+                  <div class="flex items-center justify-between text-[9px] text-slate-400 font-mono">
+                    <span>Coord: [${p.x}px, ${p.y}px]</span>
+                    <span>${p.ms}ms</span>
+                  </div>
+                </div>
+              `).join('');
+            }
+          }
+        };
+
+        roboInterval = setInterval(() => {
+          if (!yoloWorker || !jogoAtivo) return;
+          if (letrasAtivas && letrasAtivas.length > 0) {
+            const targets = letrasAtivas.map(l => ({
+              char: l.letra,
+              x: l.x,
+              y: l.y,
+              id: l.id
+            }));
+            yoloWorker.postMessage({
+              type: 'auto-play-tensor',
+              activeLetters: targets,
+              stageHeight: alturaPalco,
+              estagio: estagioAtual
+            });
+          }
+        }, 700);
+
+      } catch (err) {
+        console.error("Robozinho setup error:", err);
+        desativarRobo();
+      }
+    }
+
+    // Formatação de Scores com padronização bonita (ex: 030)
+    function formatarPontuacao(num) {
+      if (num < 10) return '00' + num;
+      if (num < 100) return '0' + num;
+      return num.toString();
+    }
+
+    // Efeitos Visuais Fofos de Partícula quando a bolhinha de letra explode
+    function criarEfeitoEstouro(x, y) {
+      const stage = document.getElementById('game-stage');
+      const numParticulas = 8;
+      const coresPaleta = ['#fda4af', '#fcd34d', '#6ee7b7', '#93c5fd', '#c084fc', '#fb923c'];
+
+      for (let i = 0; i < numParticulas; i++) {
+        const p = document.createElement('div');
+        p.className = 'confetti rounded-full';
+        
+        // Coisas físicas aleatórias
+        const angulo = (i / numParticulas) * 2 * Math.PI + Math.random() * 0.5;
+        const raioDist = 35 + Math.random() * 30;
+        const tx = Math.cos(angulo) * raioDist;
+        const ty = Math.sin(angulo) * raioDist;
+        const tamanho = 8 + Math.random() * 10;
+
+        p.style.width = `${tamanho}px`;
+        p.style.height = `${tamanho}px`;
+        p.style.background = coresPaleta[Math.floor(Math.random() * coresPaleta.length)];
+        p.style.left = `${x - (tamanho/2)}px`;
+        p.style.top = `${y - (tamanho/2)}px`;
+        p.style.setProperty('--tx', `${tx}px`);
+        p.style.setProperty('--ty', `${ty}px`);
+
+        stage.appendChild(p);
+
+        // Remover autônomo ao fim da animação
+        setTimeout(() => p.remove(), 600);
+      }
+    }
+
+    // Criar um Popup escrito fofo de pontuação onde acertou
+    function criarPopupPontos(x, y, texto) {
+      const stage = document.getElementById('game-stage');
+      const pop = document.createElement('div');
+      pop.className = 'points-pop font-title font-bold text-amber-500 font-extrabold text-lg filter drop-shadow-sm select-none';
+      pop.textContent = texto;
+      pop.style.left = `${x}px`;
+      pop.style.top = `${y}px`;
+
+      stage.appendChild(pop);
+      setTimeout(() => pop.remove(), 800);
+    }
+
+    // Splash d'água na Ondinha limite se a bolha tocar a água do rio
+    function fazerSalpicoDeAgua(x, y, letra) {
+      const stage = document.getElementById('game-stage');
+      
+      // Animação de Texto informando que afundou
+      const splashTxt = document.createElement('div');
+      splashTxt.className = 'absolute text-sky-600 font-title font-bold text-sm pointer-events-none select-none animate-bounce';
+      splashTxt.textContent = `Plop! 💧`;
+      splashTxt.style.left = `${x - 20}px`;
+      splashTxt.style.top = `${y - 15}px`;
+      stage.appendChild(splashTxt);
+      setTimeout(() => splashTxt.remove(), 1000);
+
+      // Partículas respingos de água
+      for (let i = 0; i < 4; i++) {
+        const respingo = document.createElement('div');
+        respingo.className = 'confetti bg-sky-300 rounded-full border border-sky-400';
+        const tx = -20 + Math.random() * 40;
+        const ty = -15 - Math.random() * 20;
+        respingo.style.width = '6px';
+        respingo.style.height = '10px';
+        respingo.style.left = `${x}px`;
+        respingo.style.top = `${y}px`;
+        respingo.style.setProperty('--tx', `${tx}px`);
+        respingo.style.setProperty('--ty', `${ty}px`);
+
+        stage.appendChild(respingo);
+        setTimeout(() => respingo.remove(), 600);
+      }
+    }
+
+    // Controlar Expressões do Mascote Dinâmico SVG
+    let mascotTimeout = null;
+    function mudarHumorMascote(mood) {
+      const leftEye = document.getElementById('left-eye');
+      const rightEye = document.getElementById('right-eye');
+      const mouth = document.getElementById('mascot-mouth');
+      const svg = document.getElementById('mascote-svg');
+
+      if (!leftEye || !rightEye || !mouth) return;
+
+      // Limpar timer pendente de voltar ao padrão
+      if (mascotTimeout) clearTimeout(mascotTimeout);
+
+      if (mood === 'acerto') {
+        // Expressão de enorme alegria extrema!
+        leftEye.setAttribute('cy', '45');
+        rightEye.setAttribute('cy', '45');
+        mouth.setAttribute('d', 'M 30,55 Q 50,85 70,55'); // Boca sorrindo abertona
+        svg.style.transform = 'scale(1.1) rotate(5deg)';
+        
+        // Voltar ao padrão após 700ms
+        mascotTimeout = setTimeout(() => {
+          mudarHumorMascote('padrao');
+        }, 700);
+
+      } else if (mood === 'erro') {
+        // Expressão tristinha ou de cuidado
+        leftEye.setAttribute('cy', '45');
+        rightEye.setAttribute('cy', '45');
+        mouth.setAttribute('d', 'M 35,68 Q 50,52 65,68'); // Boca curva biquinho
+        svg.style.transform = 'translateY(4px)';
+
+        mascotTimeout = setTimeout(() => {
+          mudarHumorMascote('padrao');
+        }, 1000);
+
+      } else if (mood === 'alerta') {
+        // Olhar concentrado e surpreso com d'água próxima
+        leftEye.setAttribute('cy', '42');
+        rightEye.setAttribute('cy', '42');
+        mouth.setAttribute('d', 'M 42,60 Q 50,60 58,60'); // Boquinha redondinha "O" ou reta
+        svg.style.transform = 'scale(1.03)';
+
+      } else {
+        // Neutro / Feliz padrão
+        leftEye.setAttribute('cy', '45');
+        rightEye.setAttribute('cy', '45');
+        mouth.setAttribute('d', 'M 35,58 Q 50,72 65,58'); // Sorriso carismático
+        svg.style.transform = 'scale(1) rotate(0deg)';
+      }
+    }
+
+  </script>
+</body>
+</html>

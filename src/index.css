@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Playpen+Sans:wght@300..800&family=Short+Stack&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-title: "Fredoka", sans-serif;
+  --font-sans: "Playpen Sans", sans-serif;
+  --font-cartoon: "Short Stack", cursive;
+}
+
+body {
+  background-color: #f0fdf4;
+  background-image: radial-gradient(#dcfce7 1.5px, transparent 1.5px), radial-gradient(#dcfce7 1.5px, #f0fdf4 1.5px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+  user-select: none;
+}
+
+/* Ondinhas limite rítmicas de água */
+.river-wave {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  border-radius: 40% 40% 0 0;
+  animation: wave 5s ease-in-out infinite alternate;
+}
+
+@keyframes wave {
+  0% { border-radius: 40% 35% 0 0; transform: translateY(0px); }
+  100% { border-radius: 35% 42% 0 0; transform: translateY(4px); }
+}
+
+/* Balão oscilante da Letra que cai */
+.bubble-letter {
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15), -1px -1px 0px rgba(255, 255, 255, 0.8);
+  animation: wiggle 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes wiggle {
+  0% { transform: scale(1) rotate(-3deg); }
+  100% { transform: scale(1.04) rotate(3deg); }
+}
+
+/* Teclado animado colorido com toque 3D */
+.key-btn {
+  transition: all 0.1s ease;
+  box-shadow: 0 6px 0px var(--shadow-color, #1e3a8a);
+}
+.key-btn:active, .key-btn.pressed {
+  transform: translateY(4px) !important;
+  box-shadow: 0 2px 0px var(--shadow-color, #1e3a8a) !important;
+}
+
+/* Animação do balão estourando */
+@keyframes burst {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+/* Balões flutuantes de pontuação (+10) */
+@keyframes floatUp {
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(-50%, -60px) scale(1.2); opacity: 0; }
+}
+
